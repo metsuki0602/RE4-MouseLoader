@@ -1,0 +1,17 @@
+name: Build MouseLoader
+on: [push]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install MinGW
+      run: choco install mingw -y
+    - name: Compile with g++
+      run: |
+        g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: RE4-MouseLoader
+        path: RE4-MouseLoader.exe
