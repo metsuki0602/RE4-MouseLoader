@@ -11,7 +11,7 @@ jobs:
       run: |
         g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: RE4-MouseLoader
         path: RE4-MouseLoader.exe
