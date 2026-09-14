@@ -8,7 +8,7 @@ jobs:
 
     - name: Download 32-bit MinGW
       run: |
-        Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/8.1.0/threads-posix/dwarf/i686-8.1.0-release-posix-dwarf-rt_v6-rev0.7z/download" -OutFile "mingw32.7z"
+        Invoke-WebRequest -Uri "https://github.com/niXman/mingw-builds-binaries/releases/download/13.2.0-rt_v11-rev1/i686-13.2.0-release-posix-dwarf-rt_v11-rev1.7z" -OutFile "mingw32.7z"
 
     - name: Extract MinGW
       run: |
