@@ -14,10 +14,10 @@ jobs:
         install: >-
           mingw-w64-i686-gcc
 
-    - name: Compile with g++ (32-bit)
+    - name: Compile with g++ (32-bit, static)
       shell: msys2 {0}
       run: |
-        g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
+        g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32 -static -static-libgcc -static-libstdc++
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
