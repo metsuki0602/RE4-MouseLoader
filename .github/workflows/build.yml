@@ -5,11 +5,12 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Install MinGW
-      run: choco install mingw -y
-    - name: Compile with g++
+    - name: Install 32-bit MinGW
       run: |
-        g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
+        choco install mingw --x86 -y
+        echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+    - name: Compile with g++ (32-bit)
+      run: g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
