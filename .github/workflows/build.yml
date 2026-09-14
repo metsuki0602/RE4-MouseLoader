@@ -6,23 +6,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Download 32-bit MinGW
-      run: |
-        Invoke-WebRequest -Uri "https://github.com/niXman/mingw-builds-binaries/releases/download/13.2.0-rt_v11-rev1/i686-13.2.0-release-posix-dwarf-rt_v11-rev1.7z" -OutFile "mingw32.7z"
-
-    - name: Extract MinGW
-      run: |
-        7z x mingw32.7z -oC:\mingw32
-
-    - name: Add MinGW to PATH
-      run: |
-        echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    - name: Verify compiler is 32-bit
-      run: g++ -v
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW32
+        update: true
+        install: >-
+          mingw-w64-i686-gcc
 
     - name: Compile with g++ (32-bit)
-      run: g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
+      shell: msys2 {0}
+      run: |
+        g++ main.cpp -o RE4-MouseLoader.exe -mwindows -luser32
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
