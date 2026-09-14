@@ -50,26 +50,24 @@ void SimulateKeyPress(WORD vkCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-// 4. 主循环：鼠标位移 -> 键盘输入
+// 4. 主循环：鼠标位移 -> WASD键盘输入
 void MainLoop() {
     // ⚠️ 灵敏度调节：数字越大，鼠标稍微一动，视角转得越快
-    const float sensitivity = 0.5f; 
-    // ⚠️ 按键映射：这里默认模拟的是方向键（上/下/左/右）
-    // 如果你的游戏里瞄准键是 WASD，就把 VK_LEFT 换成 'A'，VK_RIGHT 换成 'D'，以此类推。
+    const float sensitivity = 1.0f; 
 
     while (true) {
         if (g_mouseDeltaX != 0 || g_mouseDeltaY != 0) {
-            // 水平移动
+            // 水平移动 -> A / D 键
             if (g_mouseDeltaX > 0) {
-                for (int i = 0; i < abs(g_mouseDeltaX) * sensitivity; ++i) SimulateKeyPress(VK_RIGHT);
+                for (int i = 0; i < abs(g_mouseDeltaX) * sensitivity; ++i) SimulateKeyPress('D');
             } else if (g_mouseDeltaX < 0) {
-                for (int i = 0; i < abs(g_mouseDeltaX) * sensitivity; ++i) SimulateKeyPress(VK_LEFT);
+                for (int i = 0; i < abs(g_mouseDeltaX) * sensitivity; ++i) SimulateKeyPress('A');
             }
-            // 垂直移动
+            // 垂直移动 -> W / S 键
             if (g_mouseDeltaY > 0) {
-                for (int i = 0; i < abs(g_mouseDeltaY) * sensitivity; ++i) SimulateKeyPress(VK_DOWN);
+                for (int i = 0; i < abs(g_mouseDeltaY) * sensitivity; ++i) SimulateKeyPress('S');
             } else if (g_mouseDeltaY < 0) {
-                for (int i = 0; i < abs(g_mouseDeltaY) * sensitivity; ++i) SimulateKeyPress(VK_UP);
+                for (int i = 0; i < abs(g_mouseDeltaY) * sensitivity; ++i) SimulateKeyPress('W');
             }
             g_mouseDeltaX = 0;
             g_mouseDeltaY = 0;
@@ -83,15 +81,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     WNDCLASS wc = {0};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = L"RawInputWindowClass";
+    wc.lpszClassName = "RawInputWindowClass";
     RegisterClass(&wc);
-    HWND hwnd = CreateWindow(wc.lpszClassName, L"RawInputWindow", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, hInstance, nullptr);
+    HWND hwnd = CreateWindow(wc.lpszClassName, "RawInputWindow", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, hInstance, nullptr);
     if (hwnd == nullptr) {
-        MessageBox(nullptr, L"窗口创建失败", L"错误", MB_OK | MB_ICONERROR);
+        MessageBox(nullptr, "Window creation failed", "Error", MB_OK | MB_ICONERROR);
         return 0;
     }
     if (!RegisterRawInput(hwnd)) {
-        MessageBox(nullptr, L"注册Raw Input失败", L"错误", MB_OK | MB_ICONERROR);
+        MessageBox(nullptr, "Register Raw Input failed", "Error", MB_OK | MB_ICONERROR);
         return 0;
     }
     MainLoop();
