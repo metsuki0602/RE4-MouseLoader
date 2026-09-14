@@ -26,8 +26,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, buffer.data(), &dataSize, sizeof(RAWINPUTHEADER)) == dataSize) {
                 RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(buffer.data());
                 if (raw->header.dwType == RIM_TYPEMOUSE) {
-                    g_mouseDeltaX = raw->data.mouse.lLastX;
-                    g_mouseDeltaY = raw->data.mouse.lLastY;
+                    g_mouseDeltaX += raw->data.mouse.lLastX;
+                    g_mouseDeltaY += raw->data.mouse.lLastY;
                 }
             }
         }
@@ -50,29 +50,48 @@ void SimulateKeyPress(WORD vkCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-// 4. 主循环：鼠标位移 -> WASD键盘输入
+// 4. 主循环：鼠标位移 -> 根据右键状态切换 WASD / 方向键
 void MainLoop() {
-    // ⚠️ 灵敏度调节：数字越大，鼠标稍微一动，视角转得越快
-    const float sensitivity = 1.0f; 
+    // 瞄准时灵敏度（按住右键）
+    const float aimSensitivity = 0.6f;
+    // 观察时灵敏度（不按右键）
+    const float lookSensitivity = 1.5f;
 
     while (true) {
         if (g_mouseDeltaX != 0 || g_mouseDeltaY != 0) {
-            // 水平移动 -> A / D 键
-            if (g_mouseDeltaX > 0) {
-                for (int i = 0; i < abs(g_mouseDeltaX) * sensitivity; ++i) SimulateKeyPress('D');
-            } else if (g_mouseDeltaX < 0) {
-                for (int i = 0; i < abs(g_mouseDeltaX) * sensitivity; ++i) SimulateKeyPress('A');
+            // 检测右键是否按下（瞄准状态）
+            bool aiming = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+
+            if (aiming) {
+                // === 瞄准状态：鼠标 -> WASD ===
+                if (g_mouseDeltaX > 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaX) * aimSensitivity; ++i) SimulateKeyPress('D');
+                } else if (g_mouseDeltaX < 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaX) * aimSensitivity; ++i) SimulateKeyPress('A');
+                }
+                if (g_mouseDeltaY > 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaY) * aimSensitivity; ++i) SimulateKeyPress('S');
+                } else if (g_mouseDeltaY < 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaY) * aimSensitivity; ++i) SimulateKeyPress('W');
+                }
+            } else {
+                // === 普通状态：鼠标 -> 方向键（观察视角） ===
+                if (g_mouseDeltaX > 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaX) * lookSensitivity; ++i) SimulateKeyPress(VK_RIGHT);
+                } else if (g_mouseDeltaX < 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaX) * lookSensitivity; ++i) SimulateKeyPress(VK_LEFT);
+                }
+                if (g_mouseDeltaY > 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaY) * lookSensitivity; ++i) SimulateKeyPress(VK_DOWN);
+                } else if (g_mouseDeltaY < 0) {
+                    for (int i = 0; i < abs(g_mouseDeltaY) * lookSensitivity; ++i) SimulateKeyPress(VK_UP);
+                }
             }
-            // 垂直移动 -> W / S 键
-            if (g_mouseDeltaY > 0) {
-                for (int i = 0; i < abs(g_mouseDeltaY) * sensitivity; ++i) SimulateKeyPress('S');
-            } else if (g_mouseDeltaY < 0) {
-                for (int i = 0; i < abs(g_mouseDeltaY) * sensitivity; ++i) SimulateKeyPress('W');
-            }
+
             g_mouseDeltaX = 0;
             g_mouseDeltaY = 0;
         }
-        Sleep(1); 
+        Sleep(1);
     }
 }
 
