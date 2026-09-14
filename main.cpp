@@ -1,11 +1,13 @@
 #include <Windows.h>
 #include <vector>
 
-// 全局变量：存储鼠标的原始移动数据
+// 鼠标移动增量
 int g_mouseDeltaX = 0;
 int g_mouseDeltaY = 0;
+// 右键状态（从Raw Input直接获取，比GetAsyncKeyState可靠）
+bool g_rightButtonDown = false;
 
-// 1. 注册Raw Input设备，捕获鼠标原始数据
+// 注册Raw Input
 bool RegisterRawInput(HWND hwnd) {
     RAWINPUTDEVICE rid;
     rid.usUsagePage = 0x01;
@@ -15,7 +17,7 @@ bool RegisterRawInput(HWND hwnd) {
     return RegisterRawInputDevices(&rid, 1, sizeof(rid)) != FALSE;
 }
 
-// 2. 窗口消息处理
+// 窗口消息处理
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
     case WM_INPUT: {
@@ -28,6 +30,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 if (raw->header.dwType == RIM_TYPEMOUSE) {
                     g_mouseDeltaX += raw->data.mouse.lLastX;
                     g_mouseDeltaY += raw->data.mouse.lLastY;
+                    // 从Raw Input直接捕获右键状态
+                    if (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN) g_rightButtonDown = true;
+                    if (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP) g_rightButtonDown = false;
                 }
             }
         }
@@ -40,51 +45,61 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-// 3. 模拟键盘按键
-void SimulateKeyPress(WORD vkCode) {
+// 用硬件扫描码模拟按键（DirectInput才能识别）
+void SimulateKeyPressByScan(WORD scanCode, bool extended) {
     INPUT input = {0};
     input.type = INPUT_KEYBOARD;
-    input.ki.wVk = vkCode;
+    input.ki.wScan = scanCode;
+    input.ki.dwFlags = KEYEVENTF_SCANCODE;
+    if (extended) input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
     SendInput(1, &input, sizeof(INPUT));
-    input.ki.dwFlags = KEYEVENTF_KEYUP;
+
+    input.ki.dwFlags |= KEYEVENTF_KEYUP;
     SendInput(1, &input, sizeof(INPUT));
 }
 
-// 4. 主循环：鼠标位移 -> 根据右键状态切换 WASD / 方向键
+// 扫描码定义
+#define SCAN_W      0x11
+#define SCAN_A      0x1E
+#define SCAN_S      0x1F
+#define SCAN_D      0x20
+#define SCAN_UP     0x48
+#define SCAN_DOWN   0x50
+#define SCAN_LEFT   0x4B
+#define SCAN_RIGHT  0x4D
+
+// 主循环
 void MainLoop() {
-    // 瞄准时灵敏度（按住右键）
     const float aimSensitivity = 0.6f;
-    // 观察时灵敏度（不按右键）
     const float lookSensitivity = 1.5f;
 
     while (true) {
         if (g_mouseDeltaX != 0 || g_mouseDeltaY != 0) {
-            // 检测右键是否按下（瞄准状态）
-            bool aiming = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+            bool aiming = g_rightButtonDown;
 
             if (aiming) {
-                // === 瞄准状态：鼠标 -> WASD ===
+                // 瞄准：鼠标 -> WASD
                 if (g_mouseDeltaX > 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaX) * aimSensitivity; ++i) SimulateKeyPress('D');
+                    for (int i = 0; i < abs(g_mouseDeltaX) * aimSensitivity; ++i) SimulateKeyPressByScan(SCAN_D, false);
                 } else if (g_mouseDeltaX < 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaX) * aimSensitivity; ++i) SimulateKeyPress('A');
+                    for (int i = 0; i < abs(g_mouseDeltaX) * aimSensitivity; ++i) SimulateKeyPressByScan(SCAN_A, false);
                 }
                 if (g_mouseDeltaY > 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaY) * aimSensitivity; ++i) SimulateKeyPress('S');
+                    for (int i = 0; i < abs(g_mouseDeltaY) * aimSensitivity; ++i) SimulateKeyPressByScan(SCAN_S, false);
                 } else if (g_mouseDeltaY < 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaY) * aimSensitivity; ++i) SimulateKeyPress('W');
+                    for (int i = 0; i < abs(g_mouseDeltaY) * aimSensitivity; ++i) SimulateKeyPressByScan(SCAN_W, false);
                 }
             } else {
-                // === 普通状态：鼠标 -> 方向键（观察视角） ===
+                // 观察：鼠标 -> 方向键（扩展键）
                 if (g_mouseDeltaX > 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaX) * lookSensitivity; ++i) SimulateKeyPress(VK_RIGHT);
+                    for (int i = 0; i < abs(g_mouseDeltaX) * lookSensitivity; ++i) SimulateKeyPressByScan(SCAN_RIGHT, true);
                 } else if (g_mouseDeltaX < 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaX) * lookSensitivity; ++i) SimulateKeyPress(VK_LEFT);
+                    for (int i = 0; i < abs(g_mouseDeltaX) * lookSensitivity; ++i) SimulateKeyPressByScan(SCAN_LEFT, true);
                 }
                 if (g_mouseDeltaY > 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaY) * lookSensitivity; ++i) SimulateKeyPress(VK_DOWN);
+                    for (int i = 0; i < abs(g_mouseDeltaY) * lookSensitivity; ++i) SimulateKeyPressByScan(SCAN_DOWN, true);
                 } else if (g_mouseDeltaY < 0) {
-                    for (int i = 0; i < abs(g_mouseDeltaY) * lookSensitivity; ++i) SimulateKeyPress(VK_UP);
+                    for (int i = 0; i < abs(g_mouseDeltaY) * lookSensitivity; ++i) SimulateKeyPressByScan(SCAN_UP, true);
                 }
             }
 
